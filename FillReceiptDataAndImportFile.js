@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer-core');
 const config = require('./config');
 const { runAhkScript } = require('./ahkRunner');
+const path = require('path');
 
 /**
  * Traite le formulaire et charge le fichier
@@ -8,15 +9,13 @@ const { runAhkScript } = require('./ahkRunner');
  * @param {Object} data - Les données à remplir
  * @returns {Promise<void>}
  */
-async function process(page, data) {
-  const { 
-    renterName, 
-    MontantTotal, 
-    LoyerHorsCharges, 
-    charges, 
+async function fillReceiptDataAndImportFile(page, data) {
+  const {
+    renterName,
+    loyerHorsCharges,
+    charges,
     date,
-    ahkParam1,
-    ahkParam2
+    filePath,
   } = data;
 
   const timeout = config.app.defaultTimeout;
@@ -36,7 +35,7 @@ async function process(page, data) {
         y: 19.79998779296875,
       },
     });
-  
+
   // Sélectionner l'article
   await puppeteer.Locator.race([
     page.locator('::-p-aria(close Article* Montant TTC Commentaire Date de facture* JJ/MM/AAAA today Numéro de facture Facture) >>>> ::-p-aria([role=\\"combobox\\"])'),
@@ -51,7 +50,7 @@ async function process(page, data) {
         y: 16.399993896484375,
       },
     });
-  
+
   // Remplir l'article
   await puppeteer.Locator.race([
     page.locator('::-p-aria(close Article* Location longue durée Montant TTC Commentaire Date de facture* JJ/MM/AAAA today Numéro de facture Facture) >>>> ::-p-aria([role=\\"combobox\\"])'),
@@ -61,16 +60,16 @@ async function process(page, data) {
   ])
     .setTimeout(timeout)
     .fill('-42462');
-  
-  // Remplir le montant total
+
+  // Remplir le loyer
   await puppeteer.Locator.race([
     page.locator('table div > div > div > div:nth-of-type(2) > div:nth-of-type(2) input'),
     page.locator('::-p-xpath(//*[@id=\\"gTTC-montant-sub-article-559715\\"]/div/div/input)'),
     page.locator(':scope >>> table div > div > div > div:nth-of-type(2) > div:nth-of-type(2) input')
   ])
     .setTimeout(timeout)
-    .fill(MontantTotal);
-  
+    .fill(String(loyerHorsCharges));
+
   // Remplir les charges
   await puppeteer.Locator.race([
     page.locator('div:nth-of-type(2) > div:nth-of-type(3) input'),
@@ -79,7 +78,7 @@ async function process(page, data) {
   ])
     .setTimeout(timeout)
     .fill(charges);
-  
+
   // Remplir le libellé
   await puppeteer.Locator.race([
     page.locator('#Libelle-sub-article-559715'),
@@ -87,18 +86,8 @@ async function process(page, data) {
     page.locator(':scope >>> #Libelle-sub-article-559715')
   ])
     .setTimeout(timeout)
-    .fill(renterName);
-  
-  // Remplir le numéro de facture
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(Numéro de facture)'),
-    page.locator('#NumeroFacture'),
-    page.locator('::-p-xpath(//*[@id=\\"NumeroFacture\\"])'),
-    page.locator(':scope >>> #NumeroFacture')
-  ])
-    .setTimeout(timeout)
     .fill(renterName + " " + date);
-  
+
   // Remplir la date
   await puppeteer.Locator.race([
     page.locator('#gDate input'),
@@ -108,7 +97,7 @@ async function process(page, data) {
   ])
     .setTimeout(timeout)
     .fill(date);
-  
+
   // Cliquer sur "Importer"
   await puppeteer.Locator.race([
     page.locator('::-p-aria(publish Importer)'),
@@ -124,7 +113,7 @@ async function process(page, data) {
         y: 23.5999755859375,
       },
     });
-  
+
   // Cliquer sur "Importer des"
   await puppeteer.Locator.race([
     page.locator('#pdfmaker-button-import > span'),
@@ -139,10 +128,10 @@ async function process(page, data) {
         y: 7.9375,
       },
     });
-  
+
   // Exécuter le script AHK
-  await runAhkScript(config.files.importScriptName, ahkParam1, ahkParam2);
-  
+  await runAhkScript(config.files.importScriptName, `"${path.resolve(filePath)}"`);
+
   // Cliquer sur "Confirmer"
   await puppeteer.Locator.race([
     page.locator('::-p-aria(Confirmer)'),
@@ -158,7 +147,7 @@ async function process(page, data) {
         y: 26.3499755859375,
       },
     });
-  
+
   // Cliquer sur "Enregistrer"
   await puppeteer.Locator.race([
     page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
@@ -173,7 +162,7 @@ async function process(page, data) {
         y: 6.39996337890625,
       },
     });
-  
+
   // Cliquer sur "Enregistrer" une seconde fois
   await puppeteer.Locator.race([
     page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
@@ -188,28 +177,28 @@ async function process(page, data) {
         y: 6.39996337890625,
       },
     });
-  
+
   // Gérer le cas d'erreur (année antérieure)
-  try {
-    // On recommence en cliquant sur "Ajouter"
-    await puppeteer.Locator.race([
-      page.locator('::-p-aria(Ajouter)'),
-      page.locator('#Ajouter'),
-      page.locator('::-p-xpath(//*[@id=\\"Ajouter\\"])'),
-      page.locator(':scope >>> #Ajouter')
-    ])
-      .setTimeout(timeout)
-      .click({
-        offset: {
-          x: 49.19999885559082,
-          y: 14,
-        },
-      });
-  } catch (error) {
-    console.log('⚠️ Impossible de cliquer sur Ajouter à nouveau, probablement déjà terminé');
-  }
+  // try {
+  //   // On recommence en cliquant sur "Ajouter"
+  //   await puppeteer.Locator.race([
+  //     page.locator('::-p-aria(Ajouter)'),
+  //     page.locator('#Ajouter'),
+  //     page.locator('::-p-xpath(//*[@id=\\"Ajouter\\"])'),
+  //     page.locator(':scope >>> #Ajouter')
+  //   ])
+  //     .setTimeout(timeout)
+  //     .click({
+  //       offset: {
+  //         x: 49.19999885559082,
+  //         y: 14,
+  //       },
+  //     });
+  // } catch (error) {
+  //   console.log('⚠️ Impossible de cliquer sur Ajouter à nouveau, probablement déjà terminé');
+  // }
 }
 
 module.exports = {
-  process
+  fillReceiptDataAndImportFile
 };
