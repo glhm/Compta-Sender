@@ -1,4 +1,4 @@
-const connection = require('./connection');
+const connection = require('./Connection');
 const goToRecettes = require('./NavToRecettes');
 const receiptProcessor = require('./FillReceiptDataAndImportFile');
 

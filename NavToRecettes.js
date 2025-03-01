@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer-core');
-const config = require('./config');
+const config = require('./Config');
 
 /**
  * Navigue vers la page des recettes
@@ -8,7 +8,7 @@ const config = require('./config');
  */
 async function navigate(page) {
   const timeout = config.app.defaultTimeout;
-  
+
   // Cliquer sur le bouton du menu
   await puppeteer.Locator.race([
     page.locator('button.d-lg-none > span'),
@@ -22,7 +22,7 @@ async function navigate(page) {
         y: 18.737500190734863,
       },
     });
-  
+
   // Sélectionner l'année fiscale
   await puppeteer.Locator.race([
     page.locator('div.app > div select'),
@@ -36,7 +36,7 @@ async function navigate(page) {
         y: 11.20001220703125,
       },
     });
-  
+
   // Cliquer sur "Recettes"
   await puppeteer.Locator.race([
     page.locator('#ge7d9a91a4f901a72d8633230d4d350d2 span'),

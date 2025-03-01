@@ -1,6 +1,6 @@
 const { exec } = require('child_process');
 const path = require('path');
-const config = require('./config');
+const config = require('./Config');
 
 /**
  * Exécute un script AHK avec les paramètres fournis

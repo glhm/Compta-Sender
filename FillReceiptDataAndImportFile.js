@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer-core');
-const config = require('./config');
-const { runAhkScript } = require('./ahkRunner');
+const config = require('./Config');
+const { runAhkScript } = require('./AhkRunner');
 const path = require('path');
 
 /**
@@ -28,7 +28,7 @@ async function fillReceiptDataAndImportFile(page, data) {
     page.locator('::-p-xpath(//*[@id=\\"Ajouter\\"])'),
     page.locator(':scope >>> #Ajouter')
   ])
-    .setTimeout(timeout)
+    .setTimeout(longTimeout)
     .click({
       offset: {
         x: 35.19999885559082,
@@ -130,7 +130,7 @@ async function fillReceiptDataAndImportFile(page, data) {
     });
 
   // Exécuter le script AHK
-  await runAhkScript(config.files.importScriptName, `"${path.resolve(filePath)}"`);
+  await runAhkScript(config.files.importScriptName, `""${path.resolve(filePath)}""`);
 
   // Cliquer sur "Confirmer"
   await puppeteer.Locator.race([

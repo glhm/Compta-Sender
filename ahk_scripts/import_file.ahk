@@ -10,6 +10,7 @@ if (A_Args.Length < 1) {
 
 ; Récupérer le chemin du fichier passé en paramètre
 filePath := A_Args[1]  ; A_Args[1] est le premier paramètre passé lors de l'exécution du script
+filePath := Chr(34) filePath Chr(34)
 
 
 ; Attendre que la fenêtre "JD2M - Google Chrome" soit ouverte
