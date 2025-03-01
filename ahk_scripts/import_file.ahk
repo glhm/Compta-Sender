@@ -1,6 +1,6 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
-Sleep(400)
+Sleep(1000)
 
 ; Vérifier si un paramètre a été fourni
 if (A_Args.Length < 1) {

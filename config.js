@@ -25,7 +25,9 @@ module.exports = {
     // Délai d'attente par défaut pour les actions (en ms)
     defaultTimeout: 5000,
     // Délai d'attente pour les actions plus longues (en ms)
-    longTimeout: 12000
+    longTimeout: 12000,
+    maxRetryTime: 40000,
+    retryInterval: 500
   },
 
   // Paramètres pour le traitement des fichiers

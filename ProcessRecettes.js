@@ -123,8 +123,8 @@ async function processReceiptFiles(year) {
 
         console.log(`✅ Quittance traitée avec succès: ${receipt.originalFilename}`);
         // 🕒 Attendre 15 secondes avant le prochain reçu
-        console.log("⏳ Pause de 15 secondes avant le reçu suivant...");
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // console.log("⏳ Pause de 15 secondes avant le reçu suivant...");
+        // await new Promise(resolve => setTimeout(resolve, 15000));
       } catch (err) {
         console.error(`❌ Erreur lors du traitement de ${receipt.originalFilename}:`, err);
       }

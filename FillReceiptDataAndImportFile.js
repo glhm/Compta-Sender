@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer-core');
 const config = require('./Config');
 const { runAhkScript } = require('./AhkRunner');
 const path = require('path');
+const { clickWhenVisible } = require('./WaitForClickable');  // 🛠️ Import de la fonction utilitaire
 
 /**
  * Traite le formulaire et charge le fichier
@@ -21,20 +22,12 @@ async function fillReceiptDataAndImportFile(page, data) {
   const timeout = config.app.defaultTimeout;
   const longTimeout = config.app.longTimeout;
 
-  // Cliquer sur "Ajouter"
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(Ajouter)'),
-    page.locator('#Ajouter'),
-    page.locator('::-p-xpath(//*[@id=\\"Ajouter\\"])'),
-    page.locator(':scope >>> #Ajouter')
-  ])
-    .setTimeout(longTimeout)
-    .click({
-      offset: {
-        x: 35.19999885559082,
-        y: 19.79998779296875,
-      },
-    });
+  await clickWhenVisible(page, [
+    '::-p-aria(Ajouter)',
+    '#Ajouter',
+    'xpath=//*[@id="Ajouter"]',
+    ':scope >>> #Ajouter'
+  ]);
 
   // Sélectionner l'article
   await puppeteer.Locator.race([
@@ -130,7 +123,7 @@ async function fillReceiptDataAndImportFile(page, data) {
     });
 
   // Exécuter le script AHK
-  await runAhkScript(config.files.importScriptName, `""${path.resolve(filePath)}""`);
+  await runAhkScript(config.files.importScriptName, `${path.resolve(filePath)}`);
 
   // Cliquer sur "Confirmer"
   await puppeteer.Locator.race([
