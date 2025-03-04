@@ -8,8 +8,12 @@ const config = require('./Config');
  * @param {string} param1 - Premier paramètre supplémentaire
  * @returns {Promise<void>}
  */
-function runAhkScript(scriptName, param1 = '') {
+function runAhkScript(scriptName, param1) {
   return new Promise((resolve, reject) => {
+    if (!param1) {
+      reject('❌ Erreur : Le paramètre param1 ne peut pas être vide.');
+      return;
+    }
     const ahkExecutable = `"${config.paths.ahkExecutable}"`;
     const ahkScriptPath = path.join(__dirname, config.files.ahkScriptsDir, scriptName);
     const command = `${ahkExecutable} "${ahkScriptPath}" "${param1}"`;

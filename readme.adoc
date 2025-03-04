@@ -1,0 +1,10 @@
+= Compta_Loader
+
+
+An automated tool for generating residential leases based on tenant, guarantor, and property data. 
+Connected to **Notion** for data management and Google Docs for document generation.
+
+== Overview
+Load all receipts to website
+
+== Launch 

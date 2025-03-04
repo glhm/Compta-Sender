@@ -81,6 +81,15 @@ async function fillReceiptDataAndImportFile(page, data) {
     .setTimeout(timeout)
     .fill(renterName + " " + date);
 
+  // Remplir le libellé
+  await puppeteer.Locator.race([
+    page.locator('#Libelle-sub-article-45818785'),
+    page.locator('::-p-xpath(//*[@id=\\"Libelle-sub-article-45818785\\"])'),
+    page.locator(':scope >>> #Libelle-sub-article-45818785')
+  ])
+    .setTimeout(timeout)
+    .fill(renterName + " " + date);
+
   // Remplir la date
   await puppeteer.Locator.race([
     page.locator('#gDate input'),
@@ -170,26 +179,6 @@ async function fillReceiptDataAndImportFile(page, data) {
         y: 6.39996337890625,
       },
     });
-
-  // Gérer le cas d'erreur (année antérieure)
-  // try {
-  //   // On recommence en cliquant sur "Ajouter"
-  //   await puppeteer.Locator.race([
-  //     page.locator('::-p-aria(Ajouter)'),
-  //     page.locator('#Ajouter'),
-  //     page.locator('::-p-xpath(//*[@id=\\"Ajouter\\"])'),
-  //     page.locator(':scope >>> #Ajouter')
-  //   ])
-  //     .setTimeout(timeout)
-  //     .click({
-  //       offset: {
-  //         x: 49.19999885559082,
-  //         y: 14,
-  //       },
-  //     });
-  // } catch (error) {
-  //   console.log('⚠️ Impossible de cliquer sur Ajouter à nouveau, probablement déjà terminé');
-  // }
 }
 
 module.exports = {

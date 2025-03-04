@@ -30,8 +30,8 @@ function parseReceiptFilename(filename) {
   }
 
   // Extraire les informations
-  const dateStr = segments[1]; // JJMMYYYY
-  const renterName = segments[2];
+  const renterName = segments[1];
+  const dateStr = segments[2]; // YYYYMMDD
   const montant1 = segments[3]; // loyerHorsCharges (peut contenir 'v' pour la virgule)
   const montant2 = segments[4]; // charges (peut contenir 'v' pour la virgule)
 
@@ -51,7 +51,7 @@ function parseReceiptFilename(filename) {
       originalFilename: filename
     };
   } catch (error) {
-    console.error(`❌ Erreur lors du formatage des données pour ${filename}: ${error.message}`);
+    console.error(`❌ Erreur lors du parsage des données pour ${filename}: ${error.message}`);
     return null;
   }
 }
