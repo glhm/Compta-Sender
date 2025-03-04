@@ -150,35 +150,43 @@ async function fillReceiptDataAndImportFile(page, data) {
       },
     });
 
-  // Cliquer sur "Enregistrer"
-  await puppeteer.Locator.race([
-    page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
-    page.locator('::-p-xpath(//*[@id=\\"g0aea5a3b4fbea02dad40ffdfe0e622b3\\"]/span)'),
-    page.locator(':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
-    page.locator('::-p-text(Enregistrer)')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 18.962493896484375,
-        y: 6.39996337890625,
-      },
-    });
+  // // Cliquer sur "Enregistrer"
+  // await puppeteer.Locator.race([
+  //   page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
+  //   page.locator('::-p-xpath(//*[@id=\\"g0aea5a3b4fbea02dad40ffdfe0e622b3\\"]/span)'),
+  //   page.locator(':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
+  //   page.locator('::-p-text(Enregistrer)')
+  // ])
+  //   .setTimeout(timeout)
+  //   .click({
+  //     offset: {
+  //       x: 18.962493896484375,
+  //       y: 6.39996337890625,
+  //     },
+  //   });
 
-  // Cliquer sur "Enregistrer" une seconde fois
-  await puppeteer.Locator.race([
-    page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
-    page.locator('::-p-xpath(//*[@id=\\"g0aea5a3b4fbea02dad40ffdfe0e622b3\\"]/span)'),
-    page.locator(':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
-    page.locator('::-p-text(Enregistrer)')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 18.962493896484375,
-        y: 6.39996337890625,
-      },
-    });
+  // // Cliquer sur "Enregistrer" une seconde fois
+  // await puppeteer.Locator.race([
+  //   page.locator('#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
+  //   page.locator('::-p-xpath(//*[@id=\\"g0aea5a3b4fbea02dad40ffdfe0e622b3\\"]/span)'),
+  //   page.locator(':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span'),
+  //   page.locator('::-p-text(Enregistrer)')
+  // ])
+  //   .setTimeout(timeout)
+  //   .click({
+  //     offset: {
+  //       x: 18.962493896484375,
+  //       y: 6.39996337890625,
+  //     },
+  //   });
+
+
+  await clickWhenVisible(page, [
+    '#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span',
+    '::-p-xpath(//*[@id=\\"g0aea5a3b4fbea02dad40ffdfe0e622b3\\"]/span)',
+    ':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span',
+    '::-p-text(Enregistrer)'
+  ]);
 }
 
 module.exports = {
