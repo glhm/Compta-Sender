@@ -20,30 +20,31 @@ If WinExist("JD2M - Google Chrome")  ; Vérifie si la fenêtre de Chrome est ouv
     WinWaitActive()  ; Attends que la fenêtre devienne active
     Sleep(200)
 
-    ; Attendre l'apparition de la fenêtre de dialogue "Ouvrir"
+    ; Attendre l'apparition de la fenêtre de dialogue "Ouvrir" (max 5 secondes)
+    WinWait("Ouvrir", "", 5)
     If WinExist("Ouvrir")  ; Si la fenêtre "Ouvrir" est trouvée
     {
         WinActivate()  ; Active la fenêtre "Ouvrir"
         WinWaitActive()  ; Attends que la fenêtre devienne active
-        Sleep(200)
+        Sleep(500)
 
         ; Cliquer sur ToolbarWindow323 pour activer le champ de texte
         ControlClick("Edit1", "Ouvrir")  ; Cela clique sur la barre d'outils (le champ de texte)
 
         ; Attendre un peu pour s'assurer que le champ est prêt à recevoir du texte
-         Sleep(200)
+         Sleep(300)
 
         ; Envoyer le chemin du fichier dans la barre d'adresse
         SendInput(filePath)
 
         ; Attendre un peu pour s'assurer que le chemin est entré correctement
-        ; Sleep(200)
+        Sleep(300)
 
         ; Sortir du champ de texte en utilisant la touche Tab pour passer au prochain élément
         Send("{Tab}")
 
         ; Attendre que le champ perde le focus
-        ; Sleep(200)
+        Sleep(200)
 
         ; Appuyer sur "Entrée" pour cliquer sur le bouton "Ouvrir" si le bouton est en surbrillance
         Send("{Enter}")

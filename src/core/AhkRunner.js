@@ -1,6 +1,6 @@
 const { exec } = require('child_process');
 const path = require('path');
-const config = require('./Config');
+const config = require('../config/Config');
 
 /**
  * Exécute un script AHK avec les paramètres fournis
@@ -15,7 +15,7 @@ function runAhkScript(scriptName, param1) {
       return;
     }
     const ahkExecutable = `"${config.paths.ahkExecutable}"`;
-    const ahkScriptPath = path.join(__dirname, config.files.ahkScriptsDir, scriptName);
+    const ahkScriptPath = path.join(__dirname, '..', '..', config.files.ahkScriptsDir, scriptName);
     const command = `${ahkExecutable} "${ahkScriptPath}" "${param1}"`;
 
     console.log(`📂 Exécution du script AHK : ${ahkScriptPath} avec paramètres: ${param1}`);

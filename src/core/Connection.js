@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer-core');
-const config = require('./Config');
+const config = require('../config/Config');
 
 /**
  * Se connecte au site de comptabilité

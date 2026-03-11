@@ -1,0 +1,291 @@
+= Compta-Loader v2.0
+
+Automatisation du chargement des **recettes** (quittances de loyer) et **dépenses** dans l'outil de comptabilité en ligne **JD2M** (Je Déclare Mon Meublé).
+
+== Objectif
+
+Ce projet automatise la saisie des données comptables locatives pour 2 biens immobiliers :
+
+=== Recettes (Quittances)
+1. **Parse** les noms de fichiers PDF pour extraire les informations (locataire, date, montants)
+2. **Se connecte** à JD2M via Puppeteer
+3. **Remplit** le formulaire de recette avec sélection du bien
+4. **Importe** le fichier PDF via AutoHotkey
+
+=== Dépenses (Factures)
+1. **Scanne** les dossiers de dépenses par catégorie
+2. **OCR** via API Kimi K2.5 pour extraire montant et date des factures
+3. **Cache** les résultats OCR pour éviter les appels API redondants
+4. **Remplit** le formulaire de dépense avec sélection du bien et catégorie
+5. **Importe** le fichier PDF via AutoHotkey
+
+== Architecture
+
+[plantuml]
+----
+start
+if (Type de traitement?) then (Recettes)
+  :Scan dossiers Recettes/AT;
+  :Parse nom de fichier;
+  :Extraire données;
+else (Dépenses)
+  :Scan dossiers Depenses/*;
+  :OCR via API Kimi;
+  :Extraire montant/date;
+endif
+:Connexion JD2M;
+:Navigation (Recettes/Dépenses);
+:Sélection du bien;
+:Remplissage formulaire;
+:Import fichier (AHK);
+:Enregistrement;
+stop
+----
+
+=== Technologies
+
+* **Node.js** + **Puppeteer** : Automatisation navigateur
+* **AutoHotkey v2** : Gestion de la boîte de dialogue "Ouvrir" Windows
+* **API Kimi K2.5** : OCR des factures (dépenses uniquement)
+* **pdf2pic** : Conversion PDF → Image pour l'OCR
+
+== Prérequis
+
+* Node.js (v16+)
+* Google Chrome installé
+* AutoHotkey v2 installé (`C:\Program Files\AutoHotkey\v2\AutoHotkey.exe`)
+* Variables d'environnement :
+** `JD2M_MDP` : Mot de passe JD2M
+** `KIMI_API_KEY` : Clé API pour l'OCR (dépenses uniquement)
+* Accès au dossier Google Drive synchronisé : `G:\Mon Drive\Comptabilite\Locatif`
+
+== Installation
+
+[source,bash]
+----
+npm install
+----
+
+== Configuration
+
+Copiez `.env.example` vers `.env` et configurez vos variables :
+
+[source,bash]
+----
+JD2M_MDP=votre_mot_de_passe
+KIMI_API_KEY=votre_cle_api_kimi
+----
+
+Les chemins et IDs des biens sont configurés dans `src/config/Config.js` :
+
+[source,javascript]
+----
+properties: {
+  '8_Richet': {
+    path: '8_Richet',
+    name: '8 Charles Richet',
+    logementId: '280209574'
+  },
+  '55_Auduc': {
+    path: '55_Auduc',
+    name: '55 Renée Auduc',
+    logementId: '561805757'
+  }
+}
+----
+
+== Structure des dossiers
+
+----
+G:\Mon Drive\Comptabilite\Locatif\
+├── 8_Richet\
+│   └── 2025\
+│       ├── Recettes\AT\
+│       │   └── Quittance--*.pdf
+│       └── Depenses\
+│           ├── Travaux\
+│           ├── Copro\
+│           ├── Assurance_PNO\
+│           ├── CFE\
+│           ├── Comptable\
+│           ├── Eau\
+│           ├── Elec\
+│           ├── Internet\
+│           ├── Menage\
+│           ├── Mobilier\
+│           └── OGA\
+└── 55_Auduc\
+    └── 2025\
+        ├── Recettes\AT\
+        └── Depenses\
+----
+
+== Utilisation
+
+=== Traitement des Recettes (Quittances)
+
+Traite toutes les quittances des 2 biens pour l'année courante :
+
+[source,bash]
+----
+npm run recettes
+# ou
+node scripts/run-recettes.js
+----
+
+==== Format des fichiers de quittances
+
+----
+Quittance--<NomLocataire>--<YYYYMMDD>--<LoyerHC>--<Charges>.pdf
+----
+
+Exemple :
+----
+Quittance--Dupont--20240115--800v00--50v00.pdf
+----
+
+=== Traitement des Dépenses (Factures)
+
+Traite toutes les factures des 2 biens pour l'année courante :
+
+[source,bash]
+----
+npm run depenses
+# ou
+node scripts/run-depenses.js
+----
+
+Le script effectue :
+1. **OCR** de chaque facture via API Kimi (avec cache)
+2. Extraction automatique du montant TTC et de la date
+3. Sélection du bien et de la catégorie dans JD2M
+4. Import du fichier PDF
+
+==== Format des factures
+
+Les noms de fichiers peuvent être quelconques (l'OCR extrait les données) :
+----
+facture_edf_2025.pdf
+plombier_travaux_15012025.pdf
+...
+----
+
+==== Catégories supportées
+
+Les dossiers dans `Depenses/` sont automatiquement mappés :
+
+[cols="2,1,2"]
+|===
+|Dossier |ID JD2M |Label
+
+|Travaux |-82482 |Travaux
+|Copro |8244754 |Copropriété
+|Assurance_PNO |559707 |Assurance PNO
+|CFE |8244748 |CFE
+|Comptable |8244744 |Comptable
+|Eau |1203054 |Eau
+|Elec |559706 |Électricité
+|Internet |43603679 |Internet
+|Menage/Entretien |1483344 |Entretien/Ménage
+|Mobilier |37432702 |Mobilier
+|OGA |6837312 |OGA
+|===
+
+== Cache OCR
+
+Les résultats OCR sont mis en cache dans `.ocr-cache/` (hash MD5 du fichier comme clé). Cela évite de payer à nouveau les appels API Kimi si vous relancez le script.
+
+Pour forcer une nouvelle analyse OCR, supprimez le fichier de cache correspondant.
+
+== Dépannage
+
+=== "Variable d'environnement KIMI_API_KEY non définie"
+
+L'OCR nécessite une clé API Kimi. Obtenez une clé sur https://platform.moonshot.cn/
+
+=== Le script ne trouve pas les éléments sur la page
+
+Les sélecteurs DOM dans JD2M peuvent changer. Vérifiez les IDs dans :
+* `src/core/Connection.js` (connexion)
+* `src/navigation/` (menus)
+* `src/forms/` (formulaires)
+
+=== La fenêtre "Ouvrir" n'apparaît pas
+
+Vérifiez que :
+1. La fenêtre Chrome a le titre "JD2M - Google Chrome"
+2. AutoHotkey v2 est installé au chemin configuré
+3. Le fichier `ahk_scripts/import_file.ahk` existe
+
+=== Fichiers en échec
+
+En fin de traitement des dépenses, le script affiche la liste des fichiers à traiter manuellement avec :
+* Le chemin du fichier
+* L'erreur rencontrée
+* L'étape (ocr/category/mapping/jd2m)
+
+== Structure du projet
+
+----
+Compta-Loader/
+├── scripts/                     # Points d'entrée
+│   ├── run-recettes.js         # Traitement des quittances
+│   └── run-depenses.js         # Traitement des dépenses
+├── src/
+│   ├── config/                 # Configuration
+│   │   ├── Config.js          
+│   │   └── categories-mapping.json
+│   ├── core/                   # Modules cœur
+│   │   ├── Connection.js       # Connexion JD2M
+│   │   ├── AhkRunner.js        # Wrapper AHK
+│   │   ├── OcrExtractor.js     # OCR Kimi avec cache
+│   │   └── PropertyResolver.js # Détection bien depuis chemin
+│   ├── navigation/             # Navigation site
+│   │   ├── NavToRecettes.js
+│   │   └── NavToDepenses.js
+│   ├── forms/                  # Remplissage formulaires
+│   │   ├── FillReceiptDataAndImportFile.js
+│   │   └── FillDepenseDataAndImportFile.js
+│   ├── processors/             # Traitements batch
+│   ├── utils/                  # Utilitaires
+│   │   ├── FormatUtils.js
+│   │   └── WaitForClickable.js
+│   └── ahk_scripts/
+│       └── import_file.ahk     # Script AHK upload
+├── docs/                       # Documentation
+│   ├── readme.adoc
+│   └── SPEC.md
+├── .ocr-cache/                 # Cache OCR (gitignored)
+├── temp/                       # Fichiers temporaires
+├── package.json
+└── .env.example                # Template variables
+----
+
+== Notes pour les développeurs
+
+=== IDs des biens (Logement.Oid)
+
+* 8 Charles Richet : `280209574`
+* 55 Renée Auduc : `561805757`
+
+=== IDs des articles Recettes
+
+* Location longue durée : `-42462`
+
+=== Points de fragilité
+
+1. **Sélecteurs DOM** : IDs dynamiques dans JD2M, utilise `Locator.race()`
+2. **API Kimi** : Dépend d'un service externe (rate limiting, disponibilité)
+3. **Fenêtre AHK** : Dépend du titre exact de la fenêtre Chrome
+4. **OCR** : Peut échouer sur les factures de mauvaise qualité
+
+=== Gestion des erreurs
+
+* **Retry logic** : `WaitForClickable.js` avec plusieurs sélecteurs
+* **Timeouts** : Configurables dans `Config.js`
+* **Cache OCR** : Évite les appels API redondants
+* **Fallback** : Liste des échecs à la fin pour traitement manuel
+
+== Auteur
+
+Guilhem Gerbault

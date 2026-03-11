@@ -1,11 +1,16 @@
 {
-  "name": "node-starter",
+  "name": "compta-loader",
+  "version": "2.0.0",
+  "description": "Automatisation du chargement des recettes et dépenses locatives dans JD2M",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node main.js"
+    "recettes": "node scripts/run-recettes.js",
+    "depenses": "node scripts/run-depenses.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "axios": "^1.6.0",
+    "pdf2pic": "^3.1.1",
     "puppeteer-core": "^23.0.0"
   }
 }

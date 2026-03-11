@@ -1,8 +1,8 @@
 const puppeteer = require('puppeteer-core');
-const config = require('./Config');
-const { runAhkScript } = require('./AhkRunner');
+const config = require('../config/Config');
+const { runAhkScript } = require('../core/AhkRunner');
 const path = require('path');
-const { clickWhenVisible } = require('./WaitForClickable');  // 🛠️ Import de la fonction utilitaire
+const { clickWhenVisible } = require('../utils/WaitForClickable');  // 🛠️ Import de la fonction utilitaire
 
 /**
  * Traite le formulaire et charge le fichier
@@ -17,6 +17,7 @@ async function fillReceiptDataAndImportFile(page, data) {
     charges,
     date,
     filePath,
+    propertyId       // ID du logement (nouveau)
   } = data;
 
   const timeout = config.app.defaultTimeout;
@@ -28,6 +29,20 @@ async function fillReceiptDataAndImportFile(page, data) {
     'xpath=//*[@id="Ajouter"]',
     ':scope >>> #Ajouter'
   ]);
+
+  // Attendre que le formulaire/modal apparaisse (délai augmenté)
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Sélectionner le logement (bien) - NOUVEAU
+  if (propertyId) {
+    await puppeteer.Locator.race([
+      page.locator('table form > div > div:nth-of-type(1) select'),
+      page.locator('::-p-xpath(//*[@id="Logement.Oid"])'),
+      page.locator(':scope >>> table form > div > div:nth-of-type(1) select')
+    ])
+      .setTimeout(timeout)
+      .fill(propertyId);
+  }
 
   // Sélectionner l'article
   await puppeteer.Locator.race([
@@ -101,54 +116,39 @@ async function fillReceiptDataAndImportFile(page, data) {
     .fill(date);
 
   // Cliquer sur "Importer"
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(publish Importer)'),
-    page.locator('#g8266dd9078dd799027adbb0908505247'),
-    page.locator('::-p-xpath(//*[@id=\\"g8266dd9078dd799027adbb0908505247\\"])'),
-    page.locator(':scope >>> #g8266dd9078dd799027adbb0908505247'),
-    page.locator('::-p-text(publishImporterLoading...)')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 40.17498779296875,
-        y: 23.5999755859375,
-      },
-    });
+  await clickWhenVisible(page, [
+    '#g8266dd9078dd799027adbb0908505247',
+    '::-p-aria(publish Importer)',
+    '::-p-xpath(//*[@id="g8266dd9078dd799027adbb0908505247"])',
+    ':scope >>> #g8266dd9078dd799027adbb0908505247',
+    '::-p-text(Importer)'
+  ]);
+  await new Promise(resolve => setTimeout(resolve, 800));
 
   // Cliquer sur "Importer des"
-  await puppeteer.Locator.race([
-    page.locator('#pdfmaker-button-import > span'),
-    page.locator('::-p-xpath(//*[@id=\\"pdfmaker-button-import\\"]/span)'),
-    page.locator(':scope >>> #pdfmaker-button-import > span'),
-    page.locator('::-p-text(Importer des)')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 86.10000610351562,
-        y: 7.9375,
-      },
-    });
+  await clickWhenVisible(page, [
+    '#pdfmaker-button-import',
+    '#pdfmaker-button-import > span',
+    '::-p-xpath(//*[@id="pdfmaker-button-import"]/span)',
+    ':scope >>> #pdfmaker-button-import > span',
+    '::-p-text(Importer des)'
+  ]);
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
   // Exécuter le script AHK
   await runAhkScript(config.files.importScriptName, `${path.resolve(filePath)}`);
+  
+  // Attendre que le fichier soit importé (le temps que la fenêtre se ferme et JD2M rafraîchisse)
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
-  // Cliquer sur "Confirmer"
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(Confirmer)'),
-    page.locator('#g303a74098e356909ffcf68b9bd4ca1b0'),
-    page.locator('::-p-xpath(//*[@id=\\"g303a74098e356909ffcf68b9bd4ca1b0\\"])'),
-    page.locator(':scope >>> #g303a74098e356909ffcf68b9bd4ca1b0'),
-    page.locator('::-p-text(ConfirmerLoading...)')
-  ])
-    .setTimeout(longTimeout)
-    .click({
-      offset: {
-        x: 20.2874755859375,
-        y: 26.3499755859375,
-      },
-    });
+  // Cliquer sur "Confirmer" via clickWhenVisible (plus robuste)
+  await clickWhenVisible(page, [
+    '#g303a74098e356909ffcf68b9bd4ca1b0',
+    '::-p-aria(Confirmer)',
+    '::-p-xpath(//*[@id="g303a74098e356909ffcf68b9bd4ca1b0"])',
+    ':scope >>> #g303a74098e356909ffcf68b9bd4ca1b0',
+    '::-p-text(Confirmer)'
+  ]);
 
   // // Cliquer sur "Enregistrer"
   // await puppeteer.Locator.race([
@@ -187,6 +187,40 @@ async function fillReceiptDataAndImportFile(page, data) {
     ':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span',
     '::-p-text(Enregistrer)'
   ]);
+  
+  // Attendre que le modal de confirmation disparaisse complètement
+  console.log('   ⏳ Attente de la fermeture du modal...');
+  try {
+    await page.waitForFunction(() => {
+      const modal = document.querySelector('#g303a74098e356909ffcf68b9bd4ca1b0') ||
+                    document.querySelector('.modal') ||
+                    document.querySelector('[role="dialog"]');
+      return !modal || modal.offsetParent === null;
+    }, { timeout: 10000 });
+    console.log('   ✅ Modal fermé');
+  } catch (e) {
+    console.log('   ⚠️ Timeout en attendant le modal, on continue...');
+  }
+  
+  // Solution 1 : Attendre que le formulaire d'ajout soit complètement fermé
+  // en vérifiant que le bouton "Ajouter" est de nouveau visible
+  console.log('   ⏳ Attente de la fermeture du formulaire...');
+  try {
+    await page.waitForFunction(() => {
+      const ajouterBtn = document.querySelector('#Ajouter') ||
+                         document.querySelector('[aria-label="Ajouter"]') ||
+                         Array.from(document.querySelectorAll('button')).find(btn => 
+                           btn.textContent.includes('Ajouter') && btn.offsetParent !== null
+                         );
+      return ajouterBtn && ajouterBtn.offsetParent !== null;
+    }, { timeout: 15000 });
+    console.log('   ✅ Formulaire fermé, bouton Ajouter visible');
+  } catch (e) {
+    console.log('   ⚠️ Timeout en attendant le bouton Ajouter, on continue...');
+  }
+  
+  // Délai supplémentaire pour s'assurer que JD2M a bien tout enregistré
+  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 module.exports = {

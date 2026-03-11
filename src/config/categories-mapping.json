@@ -1,0 +1,48 @@
+{
+  "depenses": {
+    "travaux": {
+      "id": "-82482",
+      "label": "Travaux"
+    },
+    "copro": {
+      "id": "8244754",
+      "label": "Copropriété"
+    },
+    "assurance_pno": {
+      "id": "559707",
+      "label": "Assurance PNO"
+    },
+    "cfe": {
+      "id": "8244748",
+      "label": "CFE"
+    },
+    "comptable": {
+      "id": "8244744",
+      "label": "Comptable"
+    },
+    "eau": {
+      "id": "1203054",
+      "label": "Eau"
+    },
+    "elec": {
+      "id": "559706",
+      "label": "Électricité"
+    },
+    "internet": {
+      "id": "43603679",
+      "label": "Internet"
+    },
+    "menage": {
+      "id": "1483344",
+      "label": "Entretien/Ménage"
+    },
+    "mobilier": {
+      "id": "37432702",
+      "label": "Mobilier"
+    },
+    "oga": {
+      "id": "6837312",
+      "label": "OGA"
+    }
+  }
+}
