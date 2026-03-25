@@ -29,7 +29,7 @@ module.exports = {
   // Configuration API Kimi
   kimi: {
     apiKeyEnvVar: "API_KIMI_KEY",
-    apiUrl: "https://api.moonshot.cn/v1/chat/completions",
+    apiUrl: "https://api.moonshot.ai/v1/chat/completions",
     model: "kimi-k2.5"
   },
 

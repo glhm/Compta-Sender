@@ -17,39 +17,78 @@ async function fillDepenseDataAndImportFile(page, data) {
     montantTTC,        // Montant TTC
     date,              // Date JJ/MM/AAAA
     filePath: pdfPath, // Chemin du PDF
-    description        // Description optionnelle
+    description,       // Description (nom du fichier/fournisseur)
+    numeroFacture      // Numéro de facture (optionnel)
   } = data;
 
   const timeout = config.app.defaultTimeout;
-  const longTimeout = config.app.longTimeout;
 
   // Cliquer sur "Ajouter"
   await clickWhenVisible(page, [
-    '::-p-aria(Ajouter[role="button"])',
-    '#add-button',
-    'xpath=//*[@id="add-button"]',
-    ':scope >>> #add-button'
+    '::-p-aria(Ajouter)',
+    '#Ajouter',
+    'xpath=//*[@id="Ajouter"]',
+    ':scope >>> #Ajouter'
   ]);
 
-  // Sélectionner le logement (bien)
+  // Attendre que le formulaire apparaisse
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // === LOGEMENT ===
+  // Cliquer sur le select du logement
   await puppeteer.Locator.race([
     page.locator('table form > div > div:nth-of-type(1) select'),
     page.locator('::-p-xpath(//*[@id="Logement.Oid"])'),
     page.locator(':scope >>> table form > div > div:nth-of-type(1) select')
   ])
     .setTimeout(timeout)
-    .fill(propertyId);
+    .click({
+      offset: { x: 186.41250610351562, y: 20 }
+    });
 
-  // Sélectionner la catégorie de dépense
+  // Remplir le logement
   await puppeteer.Locator.race([
-    page.locator('form > div > div:nth-of-type(2) select'),
-    page.locator('::-p-xpath(//*[@id="Article.Oid"])'),
-    page.locator(':scope >>> form > div > div:nth-of-type(2) select')
+    page.locator('table form > div > div:nth-of-type(1) select'),
+    page.locator('::-p-xpath(//*[@id="Logement.Oid"])'),
+    page.locator(':scope >>> table form > div > div:nth-of-type(1) select')
   ])
     .setTimeout(timeout)
-    .fill(categoryId);
+    .fill(String(propertyId));
 
-  // Remplir le montant TTC
+  // === CATEGORIE ===
+  // Cliquer sur le select de la catégorie
+  await puppeteer.Locator.race([
+    page.locator('table form > div > div:nth-of-type(2) select'),
+    page.locator('::-p-xpath(//*[@id="Article.Oid"])'),
+    page.locator(':scope >>> table form > div > div:nth-of-type(2) select')
+  ])
+    .setTimeout(timeout)
+    .click({
+      offset: { x: 116.41250610351562, y: 16 }
+    });
+
+  // Remplir la catégorie
+  await puppeteer.Locator.race([
+    page.locator('table form > div > div:nth-of-type(2) select'),
+    page.locator('::-p-xpath(//*[@id="Article.Oid"])'),
+    page.locator(':scope >>> table form > div > div:nth-of-type(2) select')
+  ])
+    .setTimeout(timeout)
+    .fill(String(categoryId));
+
+  // === MONTANT TTC ===
+  // Cliquer sur le champ montant
+  await puppeteer.Locator.race([
+    page.locator('#gTTC-montant input'),
+    page.locator('::-p-xpath(//*[@id="gTTC-montant"]/div[2]/div/input)'),
+    page.locator(':scope >>> #gTTC-montant input')
+  ])
+    .setTimeout(timeout)
+    .click({
+      offset: { x: 31.412506103515625, y: 9 }
+    });
+
+  // Remplir le montant
   await puppeteer.Locator.race([
     page.locator('#gTTC-montant input'),
     page.locator('::-p-xpath(//*[@id="gTTC-montant"]/div[2]/div/input)'),
@@ -58,9 +97,23 @@ async function fillDepenseDataAndImportFile(page, data) {
     .setTimeout(timeout)
     .fill(String(montantTTC));
 
-  // Remplir le libellé/description (optionnel)
+  // === LIBELLE / DESCRIPTION ===
   if (description) {
+    // Cliquer sur le champ libellé
     await puppeteer.Locator.race([
+      page.locator('::-p-aria(Commentaire)'),
+      page.locator('#Libelle'),
+      page.locator('::-p-xpath(//*[@id="Libelle"])'),
+      page.locator(':scope >>> #Libelle')
+    ])
+      .setTimeout(timeout)
+      .click({
+        offset: { x: 55.412506103515625, y: 23 }
+      });
+
+    // Remplir le libellé
+    await puppeteer.Locator.race([
+      page.locator('::-p-aria(Commentaire)'),
       page.locator('#Libelle'),
       page.locator('::-p-xpath(//*[@id="Libelle"])'),
       page.locator(':scope >>> #Libelle')
@@ -68,6 +121,19 @@ async function fillDepenseDataAndImportFile(page, data) {
       .setTimeout(timeout)
       .fill(description);
   }
+
+  // === DATE ===
+  // Cliquer sur le champ date
+  await puppeteer.Locator.race([
+    page.locator('#gDate input'),
+    page.locator('::-p-xpath(//*[@id="gDate"]/div[2]/div/div/div[1]/div/input)'),
+    page.locator(':scope >>> #gDate input'),
+    page.locator('::-p-text(JJ/MM/AAAA)')
+  ])
+    .setTimeout(timeout)
+    .click({
+      offset: { x: 28.412506103515625, y: 12 }
+    });
 
   // Remplir la date
   await puppeteer.Locator.race([
@@ -79,61 +145,106 @@ async function fillDepenseDataAndImportFile(page, data) {
     .setTimeout(timeout)
     .fill(date);
 
-  // Cliquer sur "Importer"
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(publish Importer)'),
-    page.locator('#g8266dd9078dd799027adbb0908505247'),
-    page.locator('::-p-xpath(//*[@id="g8266dd9078dd799027adbb0908505247"])'),
-    page.locator(':scope >>> #g8266dd9078dd799027adbb0908505247')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 40.17498779296875,
-        y: 23.5999755859375,
-      },
-    });
+  // === NUMERO DE FACTURE (optionnel) ===
+  if (numeroFacture) {
+    // Cliquer sur le champ numéro de facture
+    await puppeteer.Locator.race([
+      page.locator('::-p-aria(Numéro de facture)'),
+      page.locator('#NumeroFacture'),
+      page.locator('::-p-xpath(//*[@id="NumeroFacture"])'),
+      page.locator(':scope >>> #NumeroFacture')
+    ])
+      .setTimeout(timeout)
+      .click({
+        offset: { x: 62.412506103515625, y: 23 }
+      });
 
-  // Cliquer sur "Importer des"
-  await puppeteer.Locator.race([
-    page.locator('#pdfmaker-button-import > span'),
-    page.locator('::-p-xpath(//*[@id="pdfmaker-button-import"]/span)'),
-    page.locator(':scope >>> #pdfmaker-button-import > span'),
-    page.locator('::-p-text(Importer des)')
-  ])
-    .setTimeout(timeout)
-    .click({
-      offset: {
-        x: 86.10000610351562,
-        y: 7.9375,
-      },
-    });
+    // Remplir le numéro
+    await puppeteer.Locator.race([
+      page.locator('::-p-aria(Numéro de facture)'),
+      page.locator('#NumeroFacture'),
+      page.locator('::-p-xpath(//*[@id="NumeroFacture"])'),
+      page.locator(':scope >>> #NumeroFacture')
+    ])
+      .setTimeout(timeout)
+      .fill(numeroFacture);
+  }
+
+  // === IMPORTER ===
+  await clickWhenVisible(page, [
+    '#g8266dd9078dd799027adbb0908505247',
+    '::-p-aria(publish Importer)',
+    '::-p-xpath(//*[@id="g8266dd9078dd799027adbb0908505247"])',
+    ':scope >>> #g8266dd9078dd799027adbb0908505247',
+    '::-p-text(publishImporterLoading...)'
+  ]);
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  // === IMPORTER DES FICHIERS ===
+  await clickWhenVisible(page, [
+    '#pdfmaker-button-import',
+    '::-p-aria(publish Importer des fichiers)',
+    '::-p-xpath(//*[@id="pdfmaker-button-import"])',
+    ':scope >>> #pdfmaker-button-import',
+    '::-p-text(publish Importer)'
+  ]);
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
   // Exécuter le script AHK
   await runAhkScript(config.files.importScriptName, `${path.resolve(pdfPath)}`);
 
-  // Cliquer sur "Confirmer"
-  await puppeteer.Locator.race([
-    page.locator('::-p-aria(Confirmer)'),
-    page.locator('#g303a74098e356909ffcf68b9bd4ca1b0'),
-    page.locator('::-p-xpath(//*[@id="g303a74098e356909ffcf68b9bd4ca1b0"])'),
-    page.locator(':scope >>> #g303a74098e356909ffcf68b9bd4ca1b0')
-  ])
-    .setTimeout(longTimeout)
-    .click({
-      offset: {
-        x: 20.2874755859375,
-        y: 26.3499755859375,
-      },
-    });
+  // Attendre que le fichier soit importé
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
-  // Cliquer sur "Enregistrer"
+  // === CONFIRMER ===
+  await clickWhenVisible(page, [
+    '#g303a74098e356909ffcf68b9bd4ca1b0',
+    '::-p-aria(Confirmer)',
+    '::-p-xpath(//*[@id="g303a74098e356909ffcf68b9bd4ca1b0"])',
+    ':scope >>> #g303a74098e356909ffcf68b9bd4ca1b0',
+    '::-p-text(ConfirmerLoading...)'
+  ]);
+
+  // === ENREGISTRER ===
   await clickWhenVisible(page, [
     '#g0aea5a3b4fbea02dad40ffdfe0e622b3 > span',
     '::-p-xpath(//*[@id="g0aea5a3b4fbea02dad40ffdfe0e622b3"]/span)',
     ':scope >>> #g0aea5a3b4fbea02dad40ffdfe0e622b3 > span',
     '::-p-text(Enregistrer)'
   ]);
+  
+  // Attendre la fermeture du modal
+  console.log('   ⏳ Attente de la fermeture du modal...');
+  try {
+    await page.waitForFunction(() => {
+      const modal = document.querySelector('#g303a74098e356909ffcf68b9bd4ca1b0') ||
+                    document.querySelector('.modal') ||
+                    document.querySelector('[role="dialog"]');
+      return !modal || modal.offsetParent === null;
+    }, { timeout: 10000 });
+    console.log('   ✅ Modal fermé');
+  } catch (e) {
+    console.log('   ⚠️ Timeout en attendant le modal, on continue...');
+  }
+  
+  // Attendre que le bouton Ajouter soit de nouveau visible
+  console.log('   ⏳ Attente de la fermeture du formulaire...');
+  try {
+    await page.waitForFunction(() => {
+      const ajouterBtn = document.querySelector('#Ajouter') ||
+                         document.querySelector('[aria-label="Ajouter"]') ||
+                         Array.from(document.querySelectorAll('button')).find(btn => 
+                           btn.textContent.includes('Ajouter') && btn.offsetParent !== null
+                         );
+      return ajouterBtn && ajouterBtn.offsetParent !== null;
+    }, { timeout: 15000 });
+    console.log('   ✅ Formulaire fermé, bouton Ajouter visible');
+  } catch (e) {
+    console.log('   ⚠️ Timeout en attendant le bouton Ajouter, on continue...');
+  }
+  
+  // Délai supplémentaire
+  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 module.exports = {

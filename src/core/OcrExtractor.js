@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { fromPath } = require('pdf2pic');
 const crypto = require('crypto');
 const config = require('../config/Config');
 
@@ -11,7 +10,7 @@ const config = require('../config/Config');
  */
 class OcrExtractor {
   constructor() {
-    this.apiKey = process.env[config.kimi.apiKeyEnvVar];
+    this.apiKey = (process.env[config.kimi.apiKeyEnvVar] || '').trim();
     this.cacheDir = config.cache.dir;
     this.ensureCacheDir();
     
@@ -75,60 +74,65 @@ class OcrExtractor {
   }
 
   /**
-   * Convertit un PDF en image (première page uniquement)
+   * Appelle l'API Kimi pour l'OCR avec PDF direct
    * @param {string} pdfPath - Chemin du PDF
-   * @returns {Promise<string>} - Chemin de l'image générée
-   */
-  async convertPdfToImage(pdfPath) {
-    const convert = fromPath(pdfPath, {
-      density: 200,
-      format: 'png',
-      width: 1200,
-      quality: 90,
-      savePath: './temp'
-    });
-    
-    const result = await convert(1);
-    return result.path;
-  }
-
-  /**
-   * Appelle l'API Kimi pour l'OCR
-   * @param {string} imagePath - Chemin de l'image
    * @returns {Promise<string>} - Réponse de l'API
    */
-  async callKimiAPI(imagePath) {
+  async callKimiAPI(pdfPath) {
     if (!this.apiKey) {
       throw new Error(`Clé API Kimi non configurée (${config.kimi.apiKeyEnvVar})`);
     }
 
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64Image = imageBuffer.toString('base64');
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const base64Pdf = pdfBuffer.toString('base64');
+    const filename = path.basename(pdfPath);
     
     const response = await axios.post(config.kimi.apiUrl, {
       model: config.kimi.model,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:image/png;base64,${base64Image}`
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un assistant spécialisé dans l\'extraction de données de factures. Extrais les informations demandées et retourne UNIQUEMENT un objet JSON valide.'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'file',
+              file_url: {
+                url: `data:application/pdf;base64,${base64Pdf}`,
+                name: filename
+              }
+            },
+            {
+              type: 'text',
+              text: `Extrais les informations de cette facture et retourne UNIQUEMENT un objet JSON avec ce format exact:
+{
+  "date_facture": "JJ/MM/AAAA",
+  "montant_ttc": "123,45",
+  "fournisseur": "Nom de l'entreprise ou fournisseur",
+  "numero_facture": "Numéro de facture"
+}
+
+Règles:
+- date_facture: date au format JJ/MM/AAAA
+- montant_ttc: montant TTC avec une virgule comme séparateur décimal (ex: 123,45)
+- fournisseur: nom de l'entreprise émettrice de la facture
+- numero_facture: numéro de facture s'il est présent, sinon "N/A"
+
+Retourne UNIQUEMENT le JSON, sans texte avant ou après.`
             }
-          },
-          {
-            type: 'text',
-            text: 'Extrais les informations de cette facture en JSON strict avec ce format: {"montant_ttc": number, "date_facture": "JJ/MM/AAAA"}. Le montant doit être un nombre (pas de €, pas d\'espaces). La date doit être au format JJ/MM/AAAA.'
-          }
-        ]
-      }],
-      temperature: 0.2
+          ]
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 4096
     }, {
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json'
       },
-      timeout: 30000
+      timeout: 60000
     });
     
     return response.data.choices[0].message.content;
@@ -141,14 +145,14 @@ class OcrExtractor {
    */
   parseKimiResponse(responseText) {
     try {
-      // Chercher un JSON dans la réponse
-      const jsonMatch = responseText.match(/\{[^}]+\}/);
+      // Chercher un JSON dans la réponse (gère les réponses multilignes)
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
       throw new Error('Format JSON non trouvé dans la réponse');
     } catch (error) {
-      throw new Error(`Erreur parsing réponse Kimi: ${error.message}. Réponse: ${responseText.substring(0, 100)}`);
+      throw new Error(`Erreur parsing réponse Kimi: ${error.message}. Réponse: ${responseText.substring(0, 200)}`);
     }
   }
 
@@ -171,21 +175,16 @@ class OcrExtractor {
         file: filename
       };
     }
-
-    let imagePath = null;
     
     try {
       console.log(`🔍 OCR en cours pour ${filename}...`);
       
-      // 2. Convertir en image
-      imagePath = await this.convertPdfToImage(pdfPath);
-      
-      // 3. Appeler Kimi API
-      const kimiResponse = await this.callKimiAPI(imagePath);
+      // 2. Appeler Kimi API directement avec le PDF
+      const kimiResponse = await this.callKimiAPI(pdfPath);
       const extractedData = this.parseKimiResponse(kimiResponse);
       
-      // 4. Valider les données
-      if (!extractedData.montant_ttc && extractedData.montant_ttc !== 0) {
+      // 3. Valider les données obligatoires
+      if (!extractedData.montant_ttc) {
         throw new Error('Montant TTC non trouvé dans la facture');
       }
       
@@ -193,19 +192,19 @@ class OcrExtractor {
         throw new Error('Date de facture non trouvée');
       }
 
-      // 5. Normaliser le montant
-      const montant = parseFloat(extractedData.montant_ttc);
-      if (isNaN(montant)) {
-        throw new Error(`Montant invalide: ${extractedData.montant_ttc}`);
-      }
-
+      // 4. Formater le résultat
       const result = {
-        montant_ttc: montant,
-        date_facture: extractedData.date_facture
+        date_facture: extractedData.date_facture,
+        montant_ttc: String(extractedData.montant_ttc), // Garder comme string avec virgule
+        fournisseur: extractedData.fournisseur || 'N/A',
+        numero_facture: extractedData.numero_facture || 'N/A'
       };
 
-      // 6. Sauvegarder en cache
+      // 5. Sauvegarder en cache
       this.saveToCache(cacheKey, result);
+      
+      // 6. Pause pour respecter les rate limits
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       return { 
         success: true, 
@@ -221,15 +220,6 @@ class OcrExtractor {
         file: filename,
         filePath: pdfPath
       };
-    } finally {
-      // 7. Nettoyer l'image temporaire
-      if (imagePath && fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-        } catch (cleanupError) {
-          // Ignorer les erreurs de nettoyage
-        }
-      }
     }
   }
 }

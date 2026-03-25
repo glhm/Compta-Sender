@@ -16,7 +16,6 @@ const ocr = new OcrExtractor();
  * @returns {string|null} - Clé de catégorie ou null
  */
 function normalizeCategoryName(folderName) {
-  // Mapping dossier vers clé JSON
   const mapping = {
     'OGA': 'oga',
     'Mobilier': 'mobilier',
@@ -32,7 +31,6 @@ function normalizeCategoryName(folderName) {
     'travaux': 'travaux',
     'Travaux': 'travaux'
   };
-  
   return mapping[folderName] || null;
 }
 
@@ -95,12 +93,12 @@ async function processPropertyDepenses(property, year, page) {
     return { processed: 0, failed: 0, failedFiles: [] };
   }
 
-  console.log(`📄 ${pdfFiles.length} factures trouvées`);
+  console.log(`📄 ${pdfFiles.length} facture(s) trouvée(s)`);
 
   const failedFiles = [];
   let processed = 0;
 
-  // Traiter chaque facture
+  // Traiter chaque facture: OCR -> JD2M immédiatement
   for (const fileInfo of pdfFiles) {
     console.log(`\n📄 ${path.basename(fileInfo.filePath)}`);
     console.log(`   Catégorie: ${fileInfo.originalCategory}`);
@@ -130,7 +128,7 @@ async function processPropertyDepenses(property, year, page) {
     console.log(`   → ${categoryInfo.label} (ID: ${categoryInfo.id})`);
 
     try {
-      // 1. OCR pour extraire montant et date
+      // 1. OCR pour extraire les données
       console.log(`   🔍 OCR en cours...`);
       const ocrResult = await ocr.extract(fileInfo.filePath);
 
@@ -144,22 +142,31 @@ async function processPropertyDepenses(property, year, page) {
         continue;
       }
 
-      const { montant_ttc, date_facture } = ocrResult.data;
+      const { montant_ttc, date_facture, fournisseur, numero_facture } = ocrResult.data;
       const cacheIndicator = ocrResult.fromCache ? ' (cache)' : '';
       console.log(`   ✅ OCR${cacheIndicator}: ${montant_ttc}€ le ${date_facture}`);
+      console.log(`   🏢 Fournisseur: ${fournisseur} | 📄 N°: ${numero_facture}`);
 
-      // 2. Traitement JD2M
+      // 2. Traitement JD2M immédiat
+      console.log(`   💻 Chargement dans JD2M...`);
       await depenseProcessor.fillDepenseDataAndImportFile(page, {
         propertyId: fileInfo.propertyId,
         categoryId: categoryInfo.id,
         montantTTC: montant_ttc,
         date: date_facture,
         filePath: fileInfo.filePath,
-        description: fileInfo.description
+        description: fournisseur || fileInfo.description,
+        numeroFacture: numero_facture
       });
 
-      console.log(`   ✅ Dé${fileInfo.description}`);
+      console.log(`   ✅ Facture traitée avec succès`);
       processed++;
+      
+      // Pause de 1 seconde entre chaque facture pour laisser JD2M terminer
+      if (processed < pdfFiles.length) {
+        console.log(`   ⏳ Pause de 1s avant la prochaine facture...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
     } catch (err) {
       console.error(`   ❌ Erreur: ${err.message}`);

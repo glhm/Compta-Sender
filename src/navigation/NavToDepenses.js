@@ -51,6 +51,10 @@ async function navigate(page) {
         y: 12,
       },
     });
+  
+  // Attendre le chargement complet de la page Dépenses (7-8 secondes)
+  console.log('   ⏳ Attente chargement page Dépenses...');
+  await new Promise(resolve => setTimeout(resolve, 8000));
 }
 
 module.exports = {
